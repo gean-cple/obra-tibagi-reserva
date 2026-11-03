@@ -132,8 +132,11 @@ input[type=date],input[type=text],select{font:inherit;padding:9px 10px;border:1p
 // ---------- utilidades ----------
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const $=s=>document.querySelector(s);
-const EMPRESAS=['Serpa','Campos Gerais','Eleng','Klem'];
-const VISUAL='Copel (só visualização)';
+const FISCAL='Copel';
+const VISUAL='Só visualização';
+const marca=()=>!!(U&&U.chave);
+const ehFiscal=()=>marca()&&U.empresa===FISCAL;
+const meuEv=e=>marca()&&(ehFiscal()||e.emp===U.empresa);
 const TIPO_TXT={cava:'Cava aberta',poste:'Poste implantado',cabo:'Cabo lançado',desfazer:'Desfeito'};
 const pad=n=>String(n).padStart(2,'0');
 const hojeISO=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
@@ -169,13 +172,13 @@ function calc(){
 }
 const stPoste=pid=>{const a=S[pid];return a&&a.poste?'poste':a&&a.cava?'cava':'pend'};
 const temCabo=vid=>!!(S[vid]&&S[vid].cabo);
-const podeMarcar=proj=>U&&EMPRESAS.includes(U.empresa)&&(pjEmp[proj]||PJ[proj].emp)===U.empresa;
+const podeMarcar=proj=>marca()&&(ehFiscal()||(pjEmp[proj]||PJ[proj].emp)===U.empresa);
 
 // ---------- mapa ----------
 let map,sat,rua,R,lyrP={},lyrV={},sel=null,selLyr=null,gpsM=null,gpsC=null;
 const COR={pend:'#ffffff',cava:'#facc15',poste:'#f47b20'};
-function estiloPoste(pid,proj){const meu=U&&(pjEmp[proj]||PJ[proj].emp)===U.empresa;return{radius:meu?7:5.5,color:'#111',weight:1.5,fillColor:COR[stPoste(pid)],fillOpacity:meu?1:.85,renderer:R}}
-function estiloVao(vid,proj){const c=temCabo(vid);const meu=U&&(pjEmp[proj]||PJ[proj].emp)===U.empresa;return c?{color:'#2563eb',weight:5,opacity:meu?1:.8,dashArray:null,renderer:R}:{color:'#facc15',weight:4,opacity:meu?1:.75,dashArray:'7 7',renderer:R}}
+function estiloPoste(pid,proj){const meu=podeMarcar(proj);return{radius:meu?7:5.5,color:'#111',weight:1.5,fillColor:COR[stPoste(pid)],fillOpacity:meu?1:.85,renderer:R}}
+function estiloVao(vid,proj){const c=temCabo(vid);const meu=podeMarcar(proj);return c?{color:'#2563eb',weight:5,opacity:meu?1:.8,dashArray:null,renderer:R}:{color:'#facc15',weight:4,opacity:meu?1:.75,dashArray:'7 7',renderer:R}}
 const ll=p=>[p[1],p[0]];
 function initMapa(){
   R=L.canvas({tolerance:12,padding:.5});
@@ -233,13 +236,13 @@ const gpsFresco=()=>gps&&Date.now()-gps.t<120000?gps:null;
 // ---------- marcações ----------
 function novo(tipo,proj,alvo,dt,ref){
   const g=gpsFresco();
-  return{id:uid(),marcado_em:agoraStr(),data_execucao:dt||hojeISO(),nome:U.nome,empresa:U.empresa,tipo,projeto:proj,alvo,ref:ref||'',lat:g?g.lat.toFixed(6):'',lon:g?g.lon.toFixed(6):'',precisao_m:g?Math.round(g.acc):'',obs:''};
+  return{id:uid(),marcado_em:agoraStr(),data_execucao:dt||hojeISO(),nome:U.nome,empresa:U.empresa,tipo,projeto:proj,alvo,ref:ref||'',lat:g?g.lat.toFixed(6):'',lon:g?g.lon.toFixed(6):'',precisao_m:g?Math.round(g.acc):'',obs:'',chave:U.chave};
 }
 function registrar(lista){if(!lista.length)return;outbox.push(...lista);salvar();calc();pintar();renderTudo();sync()}
 function desfazer(alvo,tipo){
   const at=(S[alvo]&&S[alvo][tipo])||[];const lista=[];let tirou=false;
   for(const e of at){
-    if(e.emp!==U.empresa)continue;
+    if(!meuEv(e))continue;
     if(e.pend){outbox=outbox.filter(o=>o.id!==e.id);tirou=true}
     else lista.push(novo('desfazer',e.proj,alvo,hojeISO(),e.id));
   }
@@ -247,7 +250,7 @@ function desfazer(alvo,tipo){
   registrar(lista);
 }
 function desfazerEvento(id){
-  const e=EV.find(x=>x.id===id);if(!e||e.emp!==U.empresa)return;
+  const e=EV.find(x=>x.id===id);if(!e||!meuEv(e))return;
   if(e.pend){outbox=outbox.filter(o=>o.id!==id);salvar();calc();pintar();renderTudo();return}
   registrar([novo('desfazer',e.proj,e.alvo,hojeISO(),id)]);
 }
@@ -276,9 +279,9 @@ function abrirPoste(o){
   if(pode){
     if(st!=='poste'){h+=campoData();if(st==='pend')h+='<button class="btn ye" data-do="cava">Cava aberta</button>';h+='<button class="btn or" data-do="poste">Poste implantado</button>'}
     h+='<button class="btn gh" data-do="trecho">Marcar vários a partir daqui</button>';
-    if(a.poste&&a.poste.some(e=>e.emp===U.empresa))h+='<button class="btn rd" data-do="u-poste">Desfazer “poste implantado”</button>';
-    else if(a.cava&&a.cava.some(e=>e.emp===U.empresa))h+='<button class="btn rd" data-do="u-cava">Desfazer “cava aberta”</button>';
-  }else h+='<div class="note">'+(U&&EMPRESAS.includes(U.empresa)?'Este projeto é da '+esc(pjEmp[o.proj]||p.emp)+'. Você só pode marcar projetos da '+esc(U.empresa)+'.':'Perfil só de visualização.')+'</div>';
+    if(a.poste&&a.poste.some(meuEv))h+='<button class="btn rd" data-do="u-poste">Desfazer “poste implantado”</button>';
+    else if(a.cava&&a.cava.some(meuEv))h+='<button class="btn rd" data-do="u-cava">Desfazer “cava aberta”</button>';
+  }else h+='<div class="note">'+(marca()?'Este projeto é da '+esc(pjEmp[o.proj]||p.emp)+'. Você só pode marcar projetos da '+esc(U.empresa)+'.':'Perfil só de visualização.')+'</div>';
   abrirSheet(h);
   $('#shC').querySelectorAll('[data-do]').forEach(b=>b.onclick=()=>{
     const d=b.dataset.do;
@@ -295,8 +298,8 @@ function abrirVao(o){
   if(pode){
     if(!a.cabo)h+=campoData()+'<button class="btn bl" data-do="cabo">Cabo lançado</button>';
     h+='<button class="btn gh" data-do="trecho">Marcar vários a partir daqui</button>';
-    if(a.cabo&&a.cabo.some(e=>e.emp===U.empresa))h+='<button class="btn rd" data-do="u-cabo">Desfazer “cabo lançado”</button>';
-  }else h+='<div class="note">'+(U&&EMPRESAS.includes(U.empresa)?'Este projeto é da '+esc(pjEmp[o.proj]||p.emp)+'.':'Perfil só de visualização.')+'</div>';
+    if(a.cabo&&a.cabo.some(meuEv))h+='<button class="btn rd" data-do="u-cabo">Desfazer “cabo lançado”</button>';
+  }else h+='<div class="note">'+(marca()?'Este projeto é da '+esc(pjEmp[o.proj]||p.emp)+'.':'Perfil só de visualização.')+'</div>';
   abrirSheet(h);
   $('#shC').querySelectorAll('[data-do]').forEach(b=>b.onclick=()=>{
     const d=b.dataset.do;
@@ -359,7 +362,7 @@ async function sync(){
     if(outbox.length){
       const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({eventos:outbox.slice(0,300)})});
       const j=await r.json();
-      if(j.ok&&j.recusados&&j.recusados.length){j.recusados.forEach(x=>recusados.add(x.id));toast(j.recusados.length+' marcação(ões) recusada(s): '+j.recusados[0].motivo,5000)}
+      if(j.ok&&j.recusados&&j.recusados.length){j.recusados.forEach(x=>recusados.add(x.id));toast(j.recusados.length+' marcação(ões) recusada(s): '+j.recusados[0].motivo,6000);if(/código/.test(j.recusados[0].motivo))setTimeout(()=>perfil(true,'Seu código de acesso não vale mais. Digite um código válido.'),1500)}
     }
     let j=await (await fetch(API+'?desde='+desde)).json();
     if(j.ok&&j.total<desde){rows=[];desde=0;j=await (await fetch(API+'?desde=0')).json()}
@@ -408,7 +411,7 @@ function renderHist(){
     const und=UNDONE.has(e.id);
     if(e.tipo==='desfazer'){const o=byId[e.ref];return '<div class="hist"><span class="dot" style="background:#e5e7eb"></span><div class="d"><b>Desfez: '+(o?TIPO_TXT[o.tipo].toLowerCase()+' · '+rotulo(o):'marcação')+'</b><small>Projeto '+e.proj+' · '+esc(e.nome)+' ('+esc(e.emp)+') · '+br(e.em).slice(0,10)+' '+String(e.em).slice(11,16)+(e.pend?' <span class="tag">aguardando envio</span>':'')+'</small></div></div>'}
     const cor=e.tipo==='cabo'?'#2563eb':COR[e.tipo];
-    const pode=!und&&U&&e.emp===U.empresa&&EMPRESAS.includes(U.empresa);
+    const pode=!und&&meuEv(e);
     return '<div class="hist'+(und?' und':'')+'"><span class="dot" style="background:'+cor+'"></span><div class="d"><b>'+TIPO_TXT[e.tipo]+' · '+rotulo(e)+'</b><small>Projeto '+e.proj+' · execução '+br(e.dt)+'</small><small>'+esc(e.nome)+' ('+esc(e.emp)+') · registrado '+br(e.em).slice(0,5)+' '+String(e.em).slice(11,16)+(e.pend?' <span class="tag">aguardando envio</span>':'')+(und?' <span class="tag">desfeito</span>':'')+'</small></div>'+(pode?'<button data-u="'+esc(e.id)+'">Desfazer</button>':'')+'</div>';
   }).join('');
   $('#hist').querySelectorAll('[data-u]').forEach(b=>b.onclick=()=>{desfazerEvento(b.dataset.u)});
@@ -420,7 +423,7 @@ let instalar=null;
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();instalar=e;renderConf()});
 function renderConf(){
   const off=LS.get('offline',null);
-  let h='<div class="card"><h3>Quem está usando</h3><div style="font-size:16px"><b>'+esc(U?U.nome:'—')+'</b></div><div class="note" style="margin-top:2px">'+esc(U?U.empresa:'')+'</div><button class="btn gh" id="cTroca">Trocar nome ou empresa</button></div>';
+  let h='<div class="card"><h3>Quem está usando</h3><div style="font-size:16px"><b>'+esc(U?U.nome:'—')+'</b></div><div class="note" style="margin-top:2px">'+esc(U?(ehFiscal()?'Fiscalização Copel · marca e desfaz em todos os projetos':U.empresa)+(U.chave?' · código '+U.chave:''):'')+'</div><button class="btn gh" id="cTroca">Trocar nome ou código</button></div>';
   h+='<div class="card"><h3>Mapa sem sinal</h3><div class="note" style="margin:0">Baixa a imagem de satélite ao longo da obra para usar onde não há sinal. Faça com Wi-Fi. '+(off?'Último download: '+esc(off)+'.':'Ainda não baixado.')+'</div><div id="dlP" class="note"></div><button class="btn or" id="cDl">Baixar mapa da obra</button></div>';
   h+='<div class="card"><h3>Sincronização</h3><div class="note" style="margin:0">'+(lastSync?'Última: '+new Date(lastSync).toLocaleString('pt-BR'):'Ainda não sincronizou.')+' · '+outbox.length+' marcação(ões) aguardando envio · '+rows.length+' registros na planilha.</div><button class="btn gh" id="cSync">Sincronizar agora</button></div>';
   if(instalar)h+='<div class="card"><h3>Instalar no celular</h3><button class="btn or" id="cInst">Instalar app</button></div>';
@@ -433,17 +436,25 @@ function renderConf(){
   if($('#cInst'))$('#cInst').onclick=()=>{instalar.prompt();instalar=null};
   $('#cApiOk').onclick=()=>{API=$('#cApi').value.trim();LS.set('api',API);rows=[];desde=0;salvar();toast('Endereço salvo');sync()};
 }
-function perfil(trocar){
-  const emp=[...EMPRESAS,VISUAL];
-  let h='<h3 style="font-size:18px">'+(trocar?'Trocar identificação':'Bem-vindo')+'</h3><div class="note" style="margin:0 0 12px">'+(trocar?'':'App de campo da LD 34,5 kV Tibagi – Reserva. ')+'Seu nome e empresa vão junto com cada marcação. Cada empresa marca só os seus projetos.</div>';
+function perfil(trocar,aviso){
+  let h='<h3 style="font-size:18px">'+(trocar?'Trocar identificação':'Bem-vindo')+'</h3><div class="note" style="margin:0 0 12px">'+(aviso?'<b style="color:#b91c1c">'+esc(aviso)+'</b><br>':'')+(trocar?'':'App de campo da LD 34,5 kV Tibagi – Reserva. ')+'Use o <b>código de acesso</b> que a Copel passou para a sua equipe. Seu nome vai junto com cada marcação.</div>';
   h+='<div class="note">Nome</div><input type="text" id="pNome" autocomplete="name" value="'+esc(U?U.nome:'')+'" placeholder="Ex.: João da Silva">';
-  h+='<div class="note">Empresa</div><select id="pEmp"><option value="">Escolha…</option>'+emp.map(e=>'<option'+(U&&U.empresa===e?' selected':'')+'>'+esc(e)+'</option>').join('')+'</select>';
-  h+='<button class="btn or" id="pOk">Entrar</button>'+(trocar?'<button class="btn gh" id="pX">Cancelar</button>':'');
+  h+='<div class="note">Código de acesso</div><input type="text" id="pCh" autocapitalize="characters" autocomplete="off" spellcheck="false" value="'+esc(U&&U.chave?U.chave:'')+'" placeholder="Ex.: SER-AB2CD" style="text-transform:uppercase;letter-spacing:.06em">';
+  h+='<button class="btn or" id="pOk">Entrar</button><button class="btn gh" id="pVer">Só visualizar (sem código)</button>'+(trocar?'<button class="btn gh" id="pX">Cancelar</button>':'');
   $('#mdC').innerHTML=h;$('#modal').classList.add('on');
-  $('#pOk').onclick=()=>{const n=$('#pNome').value.trim(),e=$('#pEmp').value;if(n.length<3){toast('Digite seu nome.');return}if(!e){toast('Escolha a empresa.');return}
-    U={nome:n,empresa:e};LS.set('user',U);$('#modal').classList.remove('on');$('#who').textContent=e.split(' ')[0];calc();pintar();renderTudo()};
+  const entrar=(n,emp,ch)=>{U={nome:n,empresa:emp,chave:ch};LS.set('user',U);$('#modal').classList.remove('on');quemPill();calc();pintar();renderTudo();sync()};
+  $('#pOk').onclick=async()=>{const n=$('#pNome').value.trim(),c=$('#pCh').value.trim().toUpperCase();if(n.length<2){toast('Digite seu nome.');return}if(!c){toast('Digite o código de acesso.');return}
+    if(!API){toast('Servidor não configurado.');return}
+    $('#pOk').disabled=true;$('#pOk').textContent='Conferindo…';
+    try{const j=await (await fetch(API+'?chave='+encodeURIComponent(c))).json();
+      if(j.ok&&j.empresa){entrar(n,j.empresa,c);toast('Bem-vindo! '+(j.fiscal?'Fiscalização Copel: pode marcar e desfazer em todos os projetos.':'Empresa: '+j.empresa),4000)}
+      else{toast(j.erro||'Código não conferido. A planilha está atualizada?',4000)}}
+    catch(e){toast('Sem internet. Para entrar a primeira vez com o código, precisa de sinal.',5000)}
+    if($('#pOk')){$('#pOk').disabled=false;$('#pOk').textContent='Entrar'}};
+  $('#pVer').onclick=()=>{const n=$('#pNome').value.trim()||'Visitante';entrar(n,VISUAL,'')};
   if($('#pX'))$('#pX').onclick=()=>$('#modal').classList.remove('on');
 }
+function quemPill(){$('#who').textContent=!U?'':ehFiscal()?'Fiscal Copel':marca()?U.empresa.split(' ')[0]:'Visualização'}
 function tilesObra(){
   const pts=[];D.projetos.forEach(p=>p.postes.forEach(q=>pts.push(q)));
   D.construida.forEach(([a,b])=>{const n=Math.ceil(dist(a,b)/100);for(let k=0;k<=n;k++)pts.push([a[0]+(b[0]-a[0])*k/n,a[1]+(b[1]-a[1])*k/n])});
@@ -480,9 +491,9 @@ $('#fLay').onclick=()=>{const s=map.hasLayer(sat);map.removeLayer(s?sat:rua);(s?
 (async function(){
   try{D=await (await fetch('data.json')).json()}catch(e){document.body.innerHTML='<p style="padding:20px">Não consegui carregar os dados da obra. Abra uma vez com internet.</p>';return}
   D.projetos.forEach(p=>PJ[p.id]=p);pjEmp=LS.get('pjEmp',{});
-  if(U)$('#who').textContent=U.empresa.split(' ')[0];
+  quemPill();
   calc();initMapa();initGps();renderTudo();
-  if(!U)perfil(false);
+  if(!U)perfil(false);else if(!U.chave&&U.empresa!==VISUAL)perfil(true,'Agora o app pede um código de acesso. Peça o seu à Copel.');
   sync();
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
