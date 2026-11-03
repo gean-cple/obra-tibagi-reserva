@@ -224,7 +224,7 @@ function initGps(){
   navigator.geolocation.watchPosition(p=>{
     gps={lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy,t:Date.now()};
     const z=[gps.lat,gps.lon];
-    if(!gpsM){gpsC=L.circle(z,{radius:gps.acc,color:'#38bdf8',weight:1,fillOpacity:.12,interactive:false}).addTo(map);gpsM=L.circleMarker(z,{radius:7,color:'#fff',weight:2.5,fillColor:'#0ea5e9',fillOpacity:1,interactive:false}).addTo(map)}
+    if(!gpsM){gpsC=L.circle(z,{radius:gps.acc,color:'#38bdf8',weight:1,fillOpacity:.12,interactive:false,renderer:R}).addTo(map);gpsM=L.circleMarker(z,{radius:7,color:'#fff',weight:2.5,fillColor:'#0ea5e9',fillOpacity:1,interactive:false,renderer:R}).addTo(map)}
     else{gpsM.setLatLng(z);gpsC.setLatLng(z).setRadius(gps.acc)}
   },()=>{},{enableHighAccuracy:true,maximumAge:10000,timeout:30000});
 }

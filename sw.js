@@ -1,5 +1,5 @@
 // Service worker: app funciona sem sinal (arquivos do app + mapa já visto ou baixado).
-const VERSAO = 'v1-2026-11-03';
+const VERSAO = 'v2-2026-11-03';
 const APP = 'app-' + VERSAO;
 const TILES = 'tiles-v1';
 const ARQUIVOS = [
