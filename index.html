@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101826">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Obra Tibagi – Reserva</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bg:#101826;--bg2:#1a2433;--tx:#e8edf4;--mut:#93a0b4;--or:#f47b20;--ye:#facc15;--bl:#3b82f6;--gr:#22c55e;--rd:#ef4444;--card:#ffffff;--ctx:#152033;--line:#e3e7ee}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:15px/1.35 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden}
+button{font:inherit;cursor:pointer}
+#top{position:fixed;top:0;left:0;right:0;z-index:1000;background:var(--bg);padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;display:flex;align-items:center;gap:10px}
+#top h1{font-size:16px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#top h1 b{color:var(--or)}
+.pill{font-size:12px;padding:4px 9px;border-radius:99px;background:var(--bg2);color:var(--mut);white-space:nowrap}
+.pill.ok{color:#bbf7d0}.pill.off{color:#fecaca}.pill.pend{color:#fde68a}
+#views{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top) + 46px);bottom:calc(env(safe-area-inset-bottom) + 58px)}
+.view{position:absolute;inset:0;display:none;overflow:auto}
+.view.on{display:block}
+#map{position:absolute;inset:0;background:#0b111b}
+#nav{position:fixed;left:0;right:0;bottom:0;z-index:1000;background:var(--bg);display:flex;padding-bottom:env(safe-area-inset-bottom);border-top:1px solid #243044}
+#nav button{flex:1;background:none;border:0;color:var(--mut);padding:8px 0 9px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px}
+#nav button.on{color:var(--or)}
+#nav svg{width:22px;height:22px}
+.fab{position:absolute;right:12px;z-index:500;width:46px;height:46px;border-radius:12px;border:0;background:#fff;color:#111;box-shadow:0 2px 8px #0006;display:flex;align-items:center;justify-content:center}
+.fab svg{width:22px;height:22px}
+#fGps{bottom:16px}#fLay{bottom:70px}#fFit{bottom:124px}
+#leg{position:absolute;left:10px;bottom:14px;z-index:500;background:#101826e6;border-radius:10px;padding:6px 10px;font-size:11px;line-height:1.55}
+#leg.min div{display:none}#leg .lt{font-weight:700;font-size:11px;color:#c7cfdb}#leg:not(.min) .lt{margin-bottom:2px}
+#leg i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px;border:1.5px solid #111}
+#leg s{display:inline-block;width:18px;height:0;border-top:3px solid;margin-right:5px;vertical-align:3px;text-decoration:none}
+#banner{position:absolute;top:8px;left:8px;right:8px;z-index:600;background:var(--or);color:#111;border-radius:12px;padding:10px 12px;display:none;box-shadow:0 2px 10px #0007}
+#banner.on{display:block}
+#banner .seg{display:flex;gap:6px;margin-top:8px}
+#banner .seg button{flex:1;border:0;border-radius:8px;padding:7px 4px;background:#ffffffaa;color:#111;font-weight:600}
+#banner .seg button.on{background:#101826;color:#fff}
+#banner .x{float:right;background:none;border:0;font-weight:700;color:#111;font-size:15px}
+#sheet{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 58px);z-index:1100;background:#fff;color:var(--ctx);border-radius:16px 16px 0 0;box-shadow:0 -4px 20px #0006;padding:14px 16px 16px;transform:translateY(calc(100% + 90px));visibility:hidden;transition:transform .2s,visibility 0s .2s;max-height:72vh;overflow:auto}
+#sheet.on{transform:none;visibility:visible;transition:transform .2s}
+#sheet h2{margin:0 26px 2px 0;font-size:18px}
+#sheet .sub{color:#5b6576;font-size:13px}
+#sheet .cl{position:absolute;right:10px;top:8px;border:0;background:#eef1f5;border-radius:50%;width:30px;height:30px;font-size:16px;color:#333}
+.st{margin:10px 0;padding:9px 11px;border-radius:10px;background:#f3f5f8;font-size:14px}
+.st b{display:block}
+.st small{color:#5b6576}
+.row{display:flex;gap:8px;align-items:center;margin:10px 0}
+.row label{font-size:13px;color:#5b6576;white-space:nowrap}
+input[type=date],input[type=text],select{font:inherit;padding:9px 10px;border:1px solid #cfd6e0;border-radius:9px;background:#fff;color:#111;width:100%}
+.btn{display:block;width:100%;border:0;border-radius:11px;padding:13px;font-weight:700;font-size:16px;margin-top:8px}
+.btn.or{background:var(--or);color:#fff}
+.btn.ye{background:var(--ye);color:#111}
+.btn.bl{background:#2563eb;color:#fff}
+.btn.gh{background:#eef1f5;color:#253045}
+.btn.rd{background:#fff;color:#b91c1c;border:1.5px solid #fca5a5}
+.btn:disabled{opacity:.45}
+.note{font-size:12.5px;color:#5b6576;margin-top:8px}
+.pad{padding:14px 14px 30px}
+.card{background:#fff;color:var(--ctx);border-radius:14px;padding:13px 14px;margin-bottom:12px}
+.card h3{margin:0 0 8px;font-size:15px}
+.big{display:flex;align-items:baseline;gap:8px}
+.big b{font-size:34px;color:var(--or);line-height:1}
+.bar{height:10px;border-radius:5px;background:#e7eaf0;position:relative;overflow:hidden;margin:8px 0 4px}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+.kp{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.kp div{background:#f3f5f8;border-radius:10px;padding:8px 10px}
+.kp b{display:block;font-size:20px}
+.kp span{font-size:12px;color:#5b6576}
+.ok{color:#15803d}.bad{color:#b91c1c}
+.pj{border-top:1px solid var(--line);padding:9px 0}
+.pj:first-of-type{border-top:0}
+.pj .t{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.pj .t small{color:#5b6576}
+.pj .m{font-size:12px;color:#5b6576}
+.hist{background:#fff;color:var(--ctx);border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center}
+.hist .d{flex:1;min-width:0}
+.hist b{font-size:14px}
+.hist small{display:block;color:#5b6576;font-size:12px}
+.hist.und{opacity:.55}.hist.und b{text-decoration:line-through}
+.tag{font-size:11px;border-radius:6px;padding:2px 6px;background:#fef3c7;color:#92400e;margin-left:4px;white-space:nowrap}
+.hist button{border:1.5px solid #fca5a5;background:#fff;color:#b91c1c;border-radius:8px;padding:6px 9px;font-size:13px;font-weight:600}
+.dot{width:12px;height:12px;border-radius:50%;flex:none;border:1.5px solid #111}
+.chk{display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px;margin:0 2px 10px}
+#modal{position:fixed;inset:0;z-index:3000;background:#101826f2;display:none;align-items:center;justify-content:center;padding:20px}
+#modal.on{display:flex}
+#modal .card{width:100%;max-width:420px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 72px);z-index:4000;background:#111827;color:#fff;padding:10px 14px;border-radius:10px;font-size:14px;display:none;max-width:90vw;text-align:center;box-shadow:0 2px 10px #0008}
+.leaflet-container{font:inherit}
+.lbl{background:none;border:0;box-shadow:none;color:#fff;font-weight:700;font-size:11px;text-shadow:0 0 3px #000,0 0 3px #000}
+.lbl:before{display:none}
+</style>
+</head>
+<body>
+<div id="top"><h1>LD 34,5 kV <b>Tibagi – Reserva</b></h1><span id="sync" class="pill">…</span><span id="who" class="pill"></span></div>
+
+<div id="views">
+  <section id="v-mapa" class="view on">
+    <div id="map"></div>
+    <div id="banner"><button class="x" id="bnX">✕</button><div id="bnT"></div><div class="seg" id="bnSeg"><button data-a="cava">Cava</button><button data-a="poste">Poste</button><button data-a="cabo">Cabo</button></div></div>
+    <div id="leg"><span class="lt">Legenda ▾</span><div><i style="background:#fff"></i>Poste a fazer</div><div><i style="background:#facc15"></i>Cava aberta</div><div><i style="background:#f47b20"></i>Poste implantado</div><div><s style="border-color:#facc15;border-top-style:dashed"></s>Vão sem cabo</div><div><s style="border-color:#2563eb"></s>Cabo lançado</div><div><s style="border-color:#60a5fa;opacity:.8"></s>Rede já construída</div></div>
+    <button class="fab" id="fFit" title="Ver obra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button class="fab" id="fLay" title="Satélite / ruas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 2 8l10 5 10-5-10-5zM2 13l10 5 10-5M2 18l10 5 10-5" transform="translate(0 -2)"/></svg></button>
+    <button class="fab" id="fGps" title="Minha posição"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+  </section>
+  <section id="v-resumo" class="view"><div class="pad" id="resumo"></div></section>
+  <section id="v-hist" class="view"><div class="pad"><label class="chk"><input type="checkbox" id="soMinha"> Só a minha empresa</label><div id="hist"></div></div></section>
+  <section id="v-conf" class="view"><div class="pad" id="conf"></div></section>
+</div>
+
+<div id="sheet"><button class="cl" id="shX">✕</button><div id="shC"></div></div>
+
+<nav id="nav">
+  <button data-v="mapa" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>Mapa</button>
+  <button data-v="resumo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Resumo</button>
+  <button data-v="hist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Histórico</button>
+  <button data-v="conf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Eu</button>
+</nav>
+
+<div id="modal"><div class="card" id="mdC"></div></div>
+<div id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="config.js"></script>
+<script>
+'use strict';
+// ---------- utilidades ----------
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const $=s=>document.querySelector(s);
+const EMPRESAS=['Serpa','Campos Gerais','Eleng','Klem'];
+const VISUAL='Copel (só visualização)';
+const TIPO_TXT={cava:'Cava aberta',poste:'Poste implantado',cabo:'Cabo lançado',desfazer:'Desfeito'};
+const pad=n=>String(n).padStart(2,'0');
+const hojeISO=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
+const agoraStr=()=>{const d=new Date();return hojeISO()+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())};
+const br=iso=>{if(!iso)return '';const m=String(iso).match(/(\d{4})-(\d{2})-(\d{2})/);if(m)return m[3]+'/'+m[2]+'/'+m[1];return String(iso)};
+const brCurto=iso=>br(iso).slice(0,5);
+const uid=()=>Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const KX=111320*Math.cos(24.6*Math.PI/180),KY=110574;
+const dist=(a,b)=>Math.hypot((a[0]-b[0])*KX,(a[1]-b[1])*KY);
+let tt;function toast(m,ms=2600){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',ms)}
+
+// ---------- estado local ----------
+let API=LS.get('api',null)||window.API_URL||'';
+let U=LS.get('user',null);
+let rows=LS.get('rows',[]);       // linhas já recebidas da planilha
+let desde=LS.get('desde',0);
+let outbox=LS.get('outbox',[]);   // marcações ainda não enviadas
+let pjEmp={};                     // projeto -> empresa (planilha pode alterar)
+let D,PJ={},gps=null,online=navigator.onLine,lastSync=LS.get('lastSync',0),syncing=false;
+const salvar=()=>{LS.set('rows',rows);LS.set('desde',desde);LS.set('outbox',outbox);LS.set('lastSync',lastSync)};
+
+function eventos(){
+  const ev=rows.map(r=>({id:r[0],rec:r[1],em:r[2],dt:r[3],nome:r[4],emp:r[5],tipo:r[6],proj:String(r[7]),alvo:r[8],ref:r[9],pend:false}));
+  const ids=new Set(ev.map(e=>e.id));
+  for(const e of outbox)if(!ids.has(e.id))ev.push({id:e.id,rec:'',em:e.marcado_em,dt:e.data_execucao,nome:e.nome,emp:e.empresa,tipo:e.tipo,proj:e.projeto,alvo:e.alvo,ref:e.ref,pend:true});
+  return ev;
+}
+let EV=[],UNDONE=new Set(),S={};
+function calc(){
+  EV=eventos();UNDONE=new Set(EV.filter(e=>e.tipo==='desfazer').map(e=>e.ref));S={};
+  for(const e of EV){if(e.tipo==='desfazer'||UNDONE.has(e.id))continue;const a=S[e.alvo]||(S[e.alvo]={});(a[e.tipo]||(a[e.tipo]=[])).push(e)}
+}
+const stPoste=pid=>{const a=S[pid];return a&&a.poste?'poste':a&&a.cava?'cava':'pend'};
+const temCabo=vid=>!!(S[vid]&&S[vid].cabo);
+const podeMarcar=proj=>U&&EMPRESAS.includes(U.empresa)&&(pjEmp[proj]||PJ[proj].emp)===U.empresa;
+
+// ---------- mapa ----------
+let map,sat,rua,R,lyrP={},lyrV={},sel=null,selLyr=null,gpsM=null,gpsC=null;
+const COR={pend:'#ffffff',cava:'#facc15',poste:'#f47b20'};
+function estiloPoste(pid,proj){const meu=U&&(pjEmp[proj]||PJ[proj].emp)===U.empresa;return{radius:meu?7:5.5,color:'#111',weight:1.5,fillColor:COR[stPoste(pid)],fillOpacity:meu?1:.85,renderer:R}}
+function estiloVao(vid,proj){const c=temCabo(vid);const meu=U&&(pjEmp[proj]||PJ[proj].emp)===U.empresa;return c?{color:'#2563eb',weight:5,opacity:meu?1:.8,dashArray:null,renderer:R}:{color:'#facc15',weight:4,opacity:meu?1:.75,dashArray:'7 7',renderer:R}}
+const ll=p=>[p[1],p[0]];
+function initMapa(){
+  R=L.canvas({tolerance:12,padding:.5});
+  map=L.map('map',{zoomControl:false,preferCanvas:true,attributionControl:true,maxZoom:20});
+  map.attributionControl.setPrefix('');
+  sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:18,maxZoom:20,attribution:'Esri'});
+  rua=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:18,maxZoom:20,attribution:'Esri'});
+  (LS.get('base','sat')==='rua'?rua:sat).addTo(map);
+  L.polyline(D.construida.map(s=>s.map(ll)),{color:'#60a5fa',weight:3,opacity:.8,renderer:R,interactive:false}).addTo(map);
+  for(const p of D.projetos){
+    const so=p.so?new Set(p.so):null;
+    p.vaos.forEach(([i,j])=>{
+      if(so&&!(so.has(i)||so.has(j)))return;
+      const vid='V:'+p.id+':'+i+'-'+j;
+      const l=L.polyline([ll(p.postes[i]),ll(p.postes[j])],estiloVao(vid,p.id)).addTo(map);
+      l.on('click',e=>{L.DomEvent.stop(e);clique({k:'v',id:vid,proj:p.id,i,j})});lyrV[vid]=l;
+    });
+  }
+  for(const p of D.projetos){
+    const so=p.so?new Set(p.so):null;
+    p.postes.forEach((q,i)=>{
+      if(so&&!so.has(i))return;
+      const pid='P:'+p.id+':'+i;
+      const m=L.circleMarker(ll(q),estiloPoste(pid,p.id)).addTo(map);
+      m.on('click',e=>{L.DomEvent.stop(e);clique({k:'p',id:pid,proj:p.id,i})});lyrP[pid]=m;
+    });
+  }
+  // rótulos dos projetos
+  for(const p of D.projetos){const q=p.postes[(p.so?p.so[0]:Math.floor(p.postes.length/2))];L.tooltip({permanent:true,direction:'right',className:'lbl',offset:[8,0]}).setLatLng(ll(q)).setContent(p.id).addTo(map)}
+  map.on('click',()=>{if(!trecho)fecharSheet()});
+  map.on('moveend',()=>{const c=map.getCenter();LS.set('view',[c.lat,c.lng,map.getZoom()])});
+  const v=LS.get('view',null);if(v)map.setView([v[0],v[1]],v[2]);else verObra();
+}
+function verObra(){const b=L.latLngBounds([]);D.projetos.forEach(p=>p.postes.forEach(q=>b.extend(ll(q))));map.fitBounds(b,{padding:[20,20]})}
+function pintar(){
+  for(const pid in lyrP){const proj=pid.split(':')[1];lyrP[pid].setStyle(estiloPoste(pid,proj))}
+  for(const vid in lyrV){const proj=vid.split(':')[1];lyrV[vid].setStyle(estiloVao(vid,proj))}
+  if(selLyr)destacar();
+}
+let hl=[];
+function destacar(ids){hl.forEach(l=>map.removeLayer(l));hl=[];(ids||(sel?[sel.id]:[])).forEach(id=>{const l=lyrP[id]||lyrV[id];if(!l)return;if(lyrP[id])hl.push(L.circleMarker(l.getLatLng(),{radius:13,color:'#22d3ee',weight:3,fill:false,interactive:false,renderer:R}).addTo(map));else hl.push(L.polyline(l.getLatLngs(),{color:'#22d3ee',weight:10,opacity:.55,interactive:false,renderer:R}).addTo(map))})}
+
+// ---------- GPS ----------
+function initGps(){
+  if(!navigator.geolocation)return;
+  navigator.geolocation.watchPosition(p=>{
+    gps={lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy,t:Date.now()};
+    const z=[gps.lat,gps.lon];
+    if(!gpsM){gpsC=L.circle(z,{radius:gps.acc,color:'#38bdf8',weight:1,fillOpacity:.12,interactive:false}).addTo(map);gpsM=L.circleMarker(z,{radius:7,color:'#fff',weight:2.5,fillColor:'#0ea5e9',fillOpacity:1,interactive:false}).addTo(map)}
+    else{gpsM.setLatLng(z);gpsC.setLatLng(z).setRadius(gps.acc)}
+  },()=>{},{enableHighAccuracy:true,maximumAge:10000,timeout:30000});
+}
+const gpsFresco=()=>gps&&Date.now()-gps.t<120000?gps:null;
+
+// ---------- marcações ----------
+function novo(tipo,proj,alvo,dt,ref){
+  const g=gpsFresco();
+  return{id:uid(),marcado_em:agoraStr(),data_execucao:dt||hojeISO(),nome:U.nome,empresa:U.empresa,tipo,projeto:proj,alvo,ref:ref||'',lat:g?g.lat.toFixed(6):'',lon:g?g.lon.toFixed(6):'',precisao_m:g?Math.round(g.acc):'',obs:''};
+}
+function registrar(lista){if(!lista.length)return;outbox.push(...lista);salvar();calc();pintar();renderTudo();sync()}
+function desfazer(alvo,tipo){
+  const at=(S[alvo]&&S[alvo][tipo])||[];const lista=[];let tirou=false;
+  for(const e of at){
+    if(e.emp!==U.empresa)continue;
+    if(e.pend){outbox=outbox.filter(o=>o.id!==e.id);tirou=true}
+    else lista.push(novo('desfazer',e.proj,alvo,hojeISO(),e.id));
+  }
+  if(tirou&&!lista.length){salvar();calc();pintar();renderTudo();return}
+  registrar(lista);
+}
+function desfazerEvento(id){
+  const e=EV.find(x=>x.id===id);if(!e||e.emp!==U.empresa)return;
+  if(e.pend){outbox=outbox.filter(o=>o.id!==id);salvar();calc();pintar();renderTudo();return}
+  registrar([novo('desfazer',e.proj,e.alvo,hojeISO(),id)]);
+}
+
+// ---------- painel inferior ----------
+function abrirSheet(html){$('#shC').innerHTML=html;$('#sheet').classList.add('on')}
+function fecharSheet(){$('#sheet').classList.remove('on');sel=null;selLyr=null;destacar([])}
+$('#shX').onclick=fecharSheet;
+const quem=l=>l.map(e=>esc(e.nome)+' ('+esc(e.emp)+') em '+brCurto(e.dt)+(e.pend?' <span class="tag">aguardando envio</span>':'')).join('<br>');
+function distTxt(lonlat){const g=gpsFresco();if(!g)return 'GPS sem posição — a marcação vai sem coordenada.';const d=dist([g.lon,g.lat],lonlat);return 'Você está a '+(d<1000?Math.round(d)+' m':(d/1000).toFixed(1)+' km')+' deste ponto (GPS ±'+Math.round(g.acc)+' m).'}
+function campoData(){return '<div class="row"><label for="dt">Data da execução</label><input type="date" id="dt" value="'+hojeISO()+'" max="'+hojeISO()+'"></div>'}
+const dtSel=()=>($('#dt')&&$('#dt').value)||hojeISO();
+function clique(o){
+  if(trecho){cliqueTrecho(o);return}
+  sel=o;selLyr=lyrP[o.id]||lyrV[o.id];destacar();
+  o.k==='p'?abrirPoste(o):abrirVao(o);
+}
+function cabecalho(proj,titulo){const p=PJ[proj];return '<h2>'+titulo+'</h2><div class="sub">Projeto '+proj+' · '+esc(p.frente)+(p.af?' · AF '+p.af:'')+'</div>'}
+function abrirPoste(o){
+  const p=PJ[o.proj],a=S[o.id]||{},st=stPoste(o.id),pode=podeMarcar(o.proj);
+  let h=cabecalho(o.proj,'Poste '+(o.i+1)+' <small style="font-weight:400;color:#5b6576">de '+p.postes.length+'</small>');
+  h+='<div class="st"><b>'+(st==='poste'?'Poste implantado':st==='cava'?'Cava aberta':'A fazer')+'</b>';
+  if(a.poste)h+='<small>Poste: '+quem(a.poste)+'</small><br>';
+  if(a.cava)h+='<small>Cava: '+quem(a.cava)+'</small>';
+  h+='</div><div class="note">'+distTxt(p.postes[o.i])+'</div>';
+  if(pode){
+    if(st!=='poste'){h+=campoData();if(st==='pend')h+='<button class="btn ye" data-do="cava">Cava aberta</button>';h+='<button class="btn or" data-do="poste">Poste implantado</button>'}
+    h+='<button class="btn gh" data-do="trecho">Marcar vários a partir daqui</button>';
+    if(a.poste&&a.poste.some(e=>e.emp===U.empresa))h+='<button class="btn rd" data-do="u-poste">Desfazer “poste implantado”</button>';
+    else if(a.cava&&a.cava.some(e=>e.emp===U.empresa))h+='<button class="btn rd" data-do="u-cava">Desfazer “cava aberta”</button>';
+  }else h+='<div class="note">'+(U&&EMPRESAS.includes(U.empresa)?'Este projeto é da '+esc(pjEmp[o.proj]||p.emp)+'. Você só pode marcar projetos da '+esc(U.empresa)+'.':'Perfil só de visualização.')+'</div>';
+  abrirSheet(h);
+  $('#shC').querySelectorAll('[data-do]').forEach(b=>b.onclick=()=>{
+    const d=b.dataset.do;
+    if(d==='cava'||d==='poste'){registrar([novo(d,o.proj,o.id,dtSel())]);toast(TIPO_TXT[d]+' · poste '+(o.i+1));abrirPoste(o)}
+    else if(d==='u-poste'){desfazer(o.id,'poste');abrirPoste(o)}
+    else if(d==='u-cava'){desfazer(o.id,'cava');abrirPoste(o)}
+    else if(d==='trecho')iniciarTrecho(o,st==='pend'?'cava':'poste');
+  });
+}
+function abrirVao(o){
+  const p=PJ[o.proj],a=S[o.id]||{},pode=podeMarcar(o.proj),L_=dist(p.postes[o.i],p.postes[o.j]);
+  let h=cabecalho(o.proj,'Vão '+(o.i+1)+'–'+(o.j+1)+' <small style="font-weight:400;color:#5b6576">'+Math.round(L_)+' m</small>');
+  h+='<div class="st"><b>'+(a.cabo?'Cabo lançado':'Sem cabo')+'</b>'+(a.cabo?'<small>'+quem(a.cabo)+'</small>':'')+'</div>';
+  if(pode){
+    if(!a.cabo)h+=campoData()+'<button class="btn bl" data-do="cabo">Cabo lançado</button>';
+    h+='<button class="btn gh" data-do="trecho">Marcar vários a partir daqui</button>';
+    if(a.cabo&&a.cabo.some(e=>e.emp===U.empresa))h+='<button class="btn rd" data-do="u-cabo">Desfazer “cabo lançado”</button>';
+  }else h+='<div class="note">'+(U&&EMPRESAS.includes(U.empresa)?'Este projeto é da '+esc(pjEmp[o.proj]||p.emp)+'.':'Perfil só de visualização.')+'</div>';
+  abrirSheet(h);
+  $('#shC').querySelectorAll('[data-do]').forEach(b=>b.onclick=()=>{
+    const d=b.dataset.do;
+    if(d==='cabo'){registrar([novo('cabo',o.proj,o.id,dtSel())]);toast('Cabo lançado · vão '+(o.i+1)+'–'+(o.j+1));abrirVao(o)}
+    else if(d==='u-cabo'){desfazer(o.id,'cabo');abrirVao(o)}
+    else if(d==='trecho')iniciarTrecho({k:'p',proj:o.proj,i:o.i,id:'P:'+o.proj+':'+o.i},'cabo');
+  });
+}
+
+// ---------- marcar vários (trecho) ----------
+let trecho=null;
+function iniciarTrecho(o,acao){
+  trecho={proj:o.proj,ini:o.i,acao};fecharSheet();sel=null;destacar(['P:'+o.proj+':'+o.i]);
+  $('#banner').classList.add('on');atualizaBanner();
+}
+function atualizaBanner(){
+  $('#bnT').innerHTML='<b>Marcar vários</b> · projeto '+trecho.proj+'<br>Saindo do poste '+(trecho.ini+1)+'. Toque no <b>último poste</b> do trecho.';
+  $('#bnSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.a===trecho.acao));
+}
+$('#bnSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{trecho.acao=b.dataset.a;atualizaBanner()});
+$('#bnX').onclick=()=>{trecho=null;$('#banner').classList.remove('on');destacar([]);fecharSheet()};
+function caminho(proj,a,b){
+  const p=PJ[proj],adj={};p.vaos.forEach(([i,j])=>{(adj[i]||(adj[i]=[])).push(j);(adj[j]||(adj[j]=[])).push(i)});
+  const prev={[a]:-1},q=[a];while(q.length){const x=q.shift();if(x===b)break;for(const y of adj[x]||[])if(!(y in prev)){prev[y]=x;q.push(y)}}
+  if(!(b in prev))return null;const out=[];for(let x=b;x!==-1;x=prev[x])out.push(x);return out.reverse();
+}
+function cliqueTrecho(o){
+  const fim=o.k==='p'?o.i:o.j;
+  if(o.proj!==trecho.proj){toast('Escolha um poste do mesmo projeto ('+trecho.proj+').');return}
+  const cam=caminho(o.proj,trecho.ini,fim);if(!cam){toast('Não achei ligação entre esses postes.');return}
+  const p=PJ[o.proj],so=p.so?new Set(p.so):null,ac=trecho.acao,alvos=[];
+  if(ac==='cabo'){for(let k=0;k<cam.length-1;k++){const a=cam[k],b=cam[k+1];let vid='V:'+o.proj+':'+a+'-'+b;if(!lyrV[vid])vid='V:'+o.proj+':'+b+'-'+a;if(lyrV[vid]&&!temCabo(vid))alvos.push(vid)}}
+  else for(const i of cam){if(so&&!so.has(i))continue;const pid='P:'+o.proj+':'+i;const st=stPoste(pid);if(ac==='cava'?st==='pend':st!=='poste')alvos.push(pid)}
+  const todos=ac==='cabo'?cam.slice(1).map((b,k)=>{let v='V:'+o.proj+':'+cam[k]+'-'+b;return lyrV[v]?v:'V:'+o.proj+':'+b+'-'+cam[k]}):cam.map(i=>'P:'+o.proj+':'+i);
+  destacar(todos);
+  const nome=ac==='cabo'?'vãos com cabo lançado':ac==='cava'?'cavas abertas':'postes implantados';
+  let h='<h2>Confirmar</h2><div class="sub">Projeto '+o.proj+' · postes '+(trecho.ini+1)+' a '+(fim+1)+'</div>';
+  if(!alvos.length)h+='<div class="st">Nada a marcar: esse trecho já está com '+nome+'.</div><button class="btn gh" data-do="nao">Voltar</button>';
+  else h+='<div class="st"><b>'+alvos.length+' '+nome+'</b><small>'+(todos.length-alvos.length?(todos.length-alvos.length)+' já estavam marcados e ficam como estão.':'')+'</small></div>'+campoData()+'<button class="btn '+(ac==='cabo'?'bl':ac==='cava'?'ye':'or')+'" data-do="sim">Marcar '+alvos.length+'</button><button class="btn gh" data-do="nao">Escolher outro poste final</button>';
+  abrirSheet(h);
+  $('#shC').querySelectorAll('[data-do]').forEach(b=>b.onclick=()=>{
+    if(b.dataset.do==='sim'){const dt=dtSel();registrar(alvos.map(a=>novo(ac,o.proj,a,dt)));toast(alvos.length+' '+nome);trecho=null;$('#banner').classList.remove('on');fecharSheet()}
+    else{$('#sheet').classList.remove('on');destacar(['P:'+o.proj+':'+trecho.ini])}
+  });
+}
+
+// ---------- sincronização com a planilha ----------
+function statusSync(){
+  const el=$('#sync');const n=outbox.length;
+  if(!API){el.className='pill off';el.textContent='sem servidor';return}
+  if(syncing){el.className='pill';el.textContent='sincronizando…';return}
+  if(!online){el.className='pill off';el.textContent='sem sinal'+(n?' · '+n+' a enviar':'');return}
+  if(n){el.className='pill pend';el.textContent=n+' a enviar';return}
+  el.className='pill ok';el.textContent='em dia';
+}
+async function sync(){
+  if(!API||syncing)return;syncing=true;statusSync();
+  try{
+    const recusados=new Set();
+    if(outbox.length){
+      const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({eventos:outbox.slice(0,300)})});
+      const j=await r.json();
+      if(j.ok&&j.recusados&&j.recusados.length){j.recusados.forEach(x=>recusados.add(x.id));toast(j.recusados.length+' marcação(ões) recusada(s): '+j.recusados[0].motivo,5000)}
+    }
+    let j=await (await fetch(API+'?desde='+desde)).json();
+    if(j.ok&&j.total<desde){rows=[];desde=0;j=await (await fetch(API+'?desde=0')).json()}
+    if(j.ok){rows=rows.concat(j.linhas);desde=rows.length;if(j.projetos)pjEmp=j.projetos;LS.set('pjEmp',pjEmp)}
+    const tem=new Set(rows.map(r=>r[0]));
+    outbox=outbox.filter(e=>!tem.has(e.id)&&!recusados.has(e.id));
+    lastSync=Date.now();online=true;salvar();
+  }catch(e){online=false}
+  syncing=false;calc();pintar();renderTudo();
+}
+setInterval(sync,45000);
+addEventListener('online',()=>{online=true;sync()});
+addEventListener('offline',()=>{online=false;statusSync()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
+
+// ---------- resumo e ritmo ----------
+const ENTREGA=()=>new Date(D.entrega+'T23:59:59');
+function diasRest(){const h=new Date();h.setHours(0,0,0,0);return Math.max(1,Math.round((new Date(D.entrega+'T00:00:00')-h)/864e5)+1)}
+function contar(proj){
+  const p=PJ[proj],so=p.so?new Set(p.so):null;let poste=0,cava=0,cabo=0,vt=0,km=0,kmT=0,rec=0;
+  const h=new Date();h.setHours(0,0,0,0);const lim=new Date(h-6*864e5);
+  p.postes.forEach((q,i)=>{if(so&&!so.has(i))return;const st=stPoste('P:'+proj+':'+i);if(st==='poste'){poste++;cava++;const e=S['P:'+proj+':'+i].poste[0];if(e.dt&&new Date(e.dt+'T12:00:00')>=lim)rec++}else if(st==='cava')cava++});
+  p.vaos.forEach(([i,j])=>{if(so&&!(so.has(i)||so.has(j)))return;vt++;const L_=dist(p.postes[i],p.postes[j]);kmT+=L_;if(temCabo('V:'+proj+':'+i+'-'+j)){cabo++;km+=L_}});
+  return{poste,cava,cabo,vt,km:km/1000,kmT:kmT/1000,rec,meta:p.meta};
+}
+function ritmoTxt(falta,rec,dias){const nec=falta/dias,real=rec/7;if(falta<=0)return '<span class="ok">concluído</span>';return 'Precisa <b>'+nec.toFixed(1)+'</b>/dia · últimos 7 dias <b class="'+(real>=nec?'ok':'bad')+'">'+real.toFixed(1)+'</b>/dia'}
+function renderResumo(){
+  const dias=diasRest();let T={poste:0,cava:0,cabo:0,vt:0,km:0,kmT:0,rec:0,meta:0};const F={};
+  for(const p of D.projetos){const c=contar(p.id);for(const k in T)T[k]+=c[k];const f=F[p.frente]||(F[p.frente]={ps:[],poste:0,cava:0,rec:0,meta:0,cabo:0,vt:0});f.ps.push([p,c]);f.poste+=c.poste;f.cava+=c.cava;f.rec+=c.rec;f.meta+=c.meta;f.cabo+=c.cabo;f.vt+=c.vt}
+  const pc=Math.min(100,T.poste/T.meta*100);
+  let h='<div class="card"><h3>Postes implantados</h3><div class="big"><b>'+T.poste+'</b><span>de '+T.meta+' · '+pc.toFixed(0)+'%</span></div><div class="bar"><i style="width:'+Math.min(100,T.cava/T.meta*100)+'%;background:#facc15"></i><i style="width:'+pc+'%;background:#f47b20"></i></div>';
+  h+='<div class="kp"><div><b>'+T.cava+'</b><span>cavas feitas ('+(T.cava-T.poste)+' aguardando poste)</span></div><div><b>'+T.km.toFixed(1)+' km</b><span>com cabo lançado ('+T.cabo+' de '+T.vt+' vãos)</span></div><div><b>'+dias+'</b><span>dias até a entrega (20/12)</span></div><div><b>'+(Math.max(0,T.meta-T.poste)/dias).toFixed(1)+'</b><span>postes/dia necessários</span></div></div>';
+  h+='<div class="note">'+ritmoTxt(T.meta-T.poste,T.rec,dias)+'</div></div>';
+  for(const fn in F){const f=F[fn];h+='<div class="card"><h3>'+esc(fn)+' <small style="font-weight:400;color:#5b6576">· '+f.poste+' de '+f.meta+' postes</small></h3><div class="note" style="margin:0 0 6px">'+ritmoTxt(f.meta-f.poste,f.rec,dias)+'</div>';
+    for(const[p,c]of f.ps)h+='<div class="pj"><div class="t"><b>'+p.id+'</b><small>'+c.poste+'/'+c.meta+' postes · '+c.cava+' cavas · '+c.cabo+'/'+c.vt+' vãos</small></div><div class="bar" style="height:7px;margin:5px 0 0"><i style="width:'+Math.min(100,c.cava/c.meta*100)+'%;background:#facc15"></i><i style="width:'+Math.min(100,c.poste/c.meta*100)+'%;background:#f47b20"></i></div></div>';
+    h+='</div>'}
+  h+='<div class="note" style="color:#93a0b4">Metas de postes por projeto: andamento das empreiteiras (30/10) e croqui de 26/10. Ritmo real = postes com data de execução nos últimos 7 dias.</div>';
+  $('#resumo').innerHTML=h;
+}
+function rotulo(e){if(e.alvo.startsWith('V:')){const[a,b]=e.alvo.split(':')[2].split('-').map(Number);return 'vão '+(a+1)+'–'+(b+1)}return 'poste '+(Number(e.alvo.split(':')[2])+1)}
+function renderHist(){
+  const so=$('#soMinha').checked;const byId={};EV.forEach(e=>byId[e.id]=e);
+  const l=EV.filter(e=>!so||(U&&e.emp===U.empresa)).slice().reverse().slice(0,300);
+  if(!l.length){$('#hist').innerHTML='<div class="note" style="color:#93a0b4">Nenhuma marcação ainda.</div>';return}
+  $('#hist').innerHTML=l.map(e=>{
+    const und=UNDONE.has(e.id);
+    if(e.tipo==='desfazer'){const o=byId[e.ref];return '<div class="hist"><span class="dot" style="background:#e5e7eb"></span><div class="d"><b>Desfez: '+(o?TIPO_TXT[o.tipo].toLowerCase()+' · '+rotulo(o):'marcação')+'</b><small>Projeto '+e.proj+' · '+esc(e.nome)+' ('+esc(e.emp)+') · '+br(e.em).slice(0,10)+' '+String(e.em).slice(11,16)+(e.pend?' <span class="tag">aguardando envio</span>':'')+'</small></div></div>'}
+    const cor=e.tipo==='cabo'?'#2563eb':COR[e.tipo];
+    const pode=!und&&U&&e.emp===U.empresa&&EMPRESAS.includes(U.empresa);
+    return '<div class="hist'+(und?' und':'')+'"><span class="dot" style="background:'+cor+'"></span><div class="d"><b>'+TIPO_TXT[e.tipo]+' · '+rotulo(e)+'</b><small>Projeto '+e.proj+' · execução '+br(e.dt)+'</small><small>'+esc(e.nome)+' ('+esc(e.emp)+') · registrado '+br(e.em).slice(0,5)+' '+String(e.em).slice(11,16)+(e.pend?' <span class="tag">aguardando envio</span>':'')+(und?' <span class="tag">desfeito</span>':'')+'</small></div>'+(pode?'<button data-u="'+esc(e.id)+'">Desfazer</button>':'')+'</div>';
+  }).join('');
+  $('#hist').querySelectorAll('[data-u]').forEach(b=>b.onclick=()=>{desfazerEvento(b.dataset.u)});
+}
+$('#soMinha').onchange=renderHist;
+
+// ---------- perfil e mapa offline ----------
+let instalar=null;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();instalar=e;renderConf()});
+function renderConf(){
+  const off=LS.get('offline',null);
+  let h='<div class="card"><h3>Quem está usando</h3><div style="font-size:16px"><b>'+esc(U?U.nome:'—')+'</b></div><div class="note" style="margin-top:2px">'+esc(U?U.empresa:'')+'</div><button class="btn gh" id="cTroca">Trocar nome ou empresa</button></div>';
+  h+='<div class="card"><h3>Mapa sem sinal</h3><div class="note" style="margin:0">Baixa a imagem de satélite ao longo da obra para usar onde não há sinal. Faça com Wi-Fi. '+(off?'Último download: '+esc(off)+'.':'Ainda não baixado.')+'</div><div id="dlP" class="note"></div><button class="btn or" id="cDl">Baixar mapa da obra</button></div>';
+  h+='<div class="card"><h3>Sincronização</h3><div class="note" style="margin:0">'+(lastSync?'Última: '+new Date(lastSync).toLocaleString('pt-BR'):'Ainda não sincronizou.')+' · '+outbox.length+' marcação(ões) aguardando envio · '+rows.length+' registros na planilha.</div><button class="btn gh" id="cSync">Sincronizar agora</button></div>';
+  if(instalar)h+='<div class="card"><h3>Instalar no celular</h3><button class="btn or" id="cInst">Instalar app</button></div>';
+  else h+='<div class="card"><h3>Instalar no celular</h3><div class="note" style="margin:0">Android (Chrome): menu ⋮ → “Instalar app” ou “Adicionar à tela inicial”. iPhone (Safari): botão Compartilhar → “Adicionar à Tela de Início”.</div></div>';
+  h+='<details class="card"><summary style="font-weight:600">Avançado</summary><div class="note">Endereço do servidor (planilha):</div><input type="text" id="cApi" value="'+esc(API)+'" placeholder="https://script.google.com/macros/s/…/exec"><button class="btn gh" id="cApiOk">Salvar endereço</button><div class="note">Versão '+esc(D.versao)+'</div></details>';
+  $('#conf').innerHTML=h;
+  $('#cTroca').onclick=()=>perfil(true);
+  $('#cDl').onclick=baixarMapa;
+  $('#cSync').onclick=()=>sync().then(renderConf);
+  if($('#cInst'))$('#cInst').onclick=()=>{instalar.prompt();instalar=null};
+  $('#cApiOk').onclick=()=>{API=$('#cApi').value.trim();LS.set('api',API);rows=[];desde=0;salvar();toast('Endereço salvo');sync()};
+}
+function perfil(trocar){
+  const emp=[...EMPRESAS,VISUAL];
+  let h='<h3 style="font-size:18px">'+(trocar?'Trocar identificação':'Bem-vindo')+'</h3><div class="note" style="margin:0 0 12px">'+(trocar?'':'App de campo da LD 34,5 kV Tibagi – Reserva. ')+'Seu nome e empresa vão junto com cada marcação. Cada empresa marca só os seus projetos.</div>';
+  h+='<div class="note">Nome</div><input type="text" id="pNome" autocomplete="name" value="'+esc(U?U.nome:'')+'" placeholder="Ex.: João da Silva">';
+  h+='<div class="note">Empresa</div><select id="pEmp"><option value="">Escolha…</option>'+emp.map(e=>'<option'+(U&&U.empresa===e?' selected':'')+'>'+esc(e)+'</option>').join('')+'</select>';
+  h+='<button class="btn or" id="pOk">Entrar</button>'+(trocar?'<button class="btn gh" id="pX">Cancelar</button>':'');
+  $('#mdC').innerHTML=h;$('#modal').classList.add('on');
+  $('#pOk').onclick=()=>{const n=$('#pNome').value.trim(),e=$('#pEmp').value;if(n.length<3){toast('Digite seu nome.');return}if(!e){toast('Escolha a empresa.');return}
+    U={nome:n,empresa:e};LS.set('user',U);$('#modal').classList.remove('on');$('#who').textContent=e.split(' ')[0];calc();pintar();renderTudo()};
+  if($('#pX'))$('#pX').onclick=()=>$('#modal').classList.remove('on');
+}
+function tilesObra(){
+  const pts=[];D.projetos.forEach(p=>p.postes.forEach(q=>pts.push(q)));
+  D.construida.forEach(([a,b])=>{const n=Math.ceil(dist(a,b)/100);for(let k=0;k<=n;k++)pts.push([a[0]+(b[0]-a[0])*k/n,a[1]+(b[1]-a[1])*k/n])});
+  const set=new Set(),buf=250,dLo=buf/KX,dLa=buf/KY;
+  const tx=(lon,z)=>Math.floor((lon+180)/360*2**z),ty=(lat,z)=>{const r=lat*Math.PI/180;return Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*2**z)};
+  for(let z=11;z<=18;z++)for(const[lo,la]of pts){const x0=tx(lo-dLo,z),x1=tx(lo+dLo,z),y0=ty(la+dLa,z),y1=ty(la-dLa,z);for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++)set.add(z+'/'+y+'/'+x)}
+  return [...set].map(k=>'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/'+k);
+}
+let baixando=false;
+async function baixarMapa(){
+  if(baixando)return;if(!('caches' in window)){toast('Este navegador não permite guardar o mapa.');return}
+  baixando=true;const urls=tilesObra(),c=await caches.open('tiles-v1');let i=0,ok=0,err=0;const el=()=>$('#dlP');
+  const um=async u=>{try{if(await c.match(u)){ok++;return}let r;try{r=await fetch(u,{mode:'cors'})}catch(e){r=await fetch(u,{mode:'no-cors'})}if(r.ok||r.type==='opaque'){await c.put(u,r);ok++}else err++}catch(e){err++}};
+  const w=async()=>{while(i<urls.length){const u=urls[i++];await um(u);if((ok+err)%20===0&&el())el().textContent='Baixando… '+(ok+err)+' de '+urls.length}};
+  await Promise.all([w(),w(),w(),w(),w(),w()]);
+  baixando=false;const d=new Date().toLocaleString('pt-BR');if(!err)LS.set('offline',d);
+  renderConf();if(el())el().textContent=err?'Faltaram '+err+' de '+urls.length+' partes — toque de novo para completar.':'Mapa da obra guardado ('+urls.length+' partes).';
+}
+
+// ---------- navegação ----------
+function renderTudo(){statusSync();renderResumo();renderHist();renderConf();if(sel&&$('#sheet').classList.contains('on')&&!trecho)(sel.k==='p'?abrirPoste:abrirVao)(sel)}
+$('#nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  $('#nav').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+b.dataset.v));
+  if(b.dataset.v==='mapa')setTimeout(()=>map.invalidateSize(),50);else{$('#sheet').classList.remove('on')}
+});
+$('#fFit').onclick=verObra;
+$('#leg').onclick=()=>{const m=$('#leg').classList.toggle('min');LS.set('legMin',m);$('#leg .lt').textContent=m?'Legenda ▸':'Legenda ▾'};
+if(LS.get('legMin',false)){$('#leg').classList.add('min');$('#leg .lt').textContent='Legenda ▸'}
+$('#fGps').onclick=()=>{const g=gpsFresco();if(g)map.setView([g.lat,g.lon],Math.max(map.getZoom(),17));else toast('Aguardando sinal do GPS…')};
+$('#fLay').onclick=()=>{const s=map.hasLayer(sat);map.removeLayer(s?sat:rua);(s?rua:sat).addTo(map);LS.set('base',s?'rua':'sat');toast(s?'Mapa de ruas':'Satélite')};
+
+// ---------- início ----------
+(async function(){
+  try{D=await (await fetch('data.json')).json()}catch(e){document.body.innerHTML='<p style="padding:20px">Não consegui carregar os dados da obra. Abra uma vez com internet.</p>';return}
+  D.projetos.forEach(p=>PJ[p.id]=p);pjEmp=LS.get('pjEmp',{});
+  if(U)$('#who').textContent=U.empresa.split(' ')[0];
+  calc();initMapa();initGps();renderTudo();
+  if(!U)perfil(false);
+  sync();
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+</body>
+</html>
